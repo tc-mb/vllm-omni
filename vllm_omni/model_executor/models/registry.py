@@ -140,6 +140,27 @@ _OMNI_MODELS = {
         "fish_speech_dac_decoder",
         "FishSpeechDACDecoder",
     ),
+    # MiniCPM-o 2.6 Omni models
+    "MiniCPMOOmniForConditionalGeneration": (
+        "minicpmo",
+        "minicpmo_omni",
+        "MiniCPMOOmniForConditionalGeneration",
+    ),
+    "MiniCPMOOmniThinkerModel": (
+        "minicpmo",
+        "minicpmo_omni_thinker",
+        "MiniCPMOOmniThinkerForConditionalGeneration",
+    ),
+    "MiniCPMOOmniTalkerModel": (
+        "minicpmo",
+        "minicpmo_omni_talker",
+        "MiniCPMOOmniTalkerForConditionalGeneration",
+    ),
+    "MiniCPMOOmniCode2WavModel": (
+        "minicpmo",
+        "minicpmo_omni_code2wav",
+        "MiniCPMOOmniCode2WavForConditionalGeneration",
+    ),
 }
 
 
