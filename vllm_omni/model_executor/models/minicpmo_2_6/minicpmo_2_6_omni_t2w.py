@@ -41,6 +41,29 @@ from transformers import (
 )
 from transformers.cache_utils import DynamicCache
 from transformers.modeling_outputs import BaseModelOutputWithPast, ModelOutput
+
+# ---------------------------------------------------------------------------
+# transformers >=5.0 removed DynamicCache.from_legacy_cache / to_legacy_cache.
+# These helpers convert between the legacy list-of-tuples format and the
+# current DynamicCache object so the vendored ChatTTS code stays compatible.
+# ---------------------------------------------------------------------------
+
+def _legacy_to_dynamic_cache(
+    past_key_values: list[tuple[torch.Tensor, torch.Tensor]],
+) -> DynamicCache:
+    cache = DynamicCache()
+    for k, v in past_key_values:
+        cache.key_cache.append(k)
+        cache.value_cache.append(v)
+    return cache
+
+
+def _dynamic_cache_to_legacy(
+    cache: DynamicCache,
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
+    return list(zip(cache.key_cache, cache.value_cache))
+
+
 from vllm.config import VllmConfig
 from vllm.logger import init_logger
 from vllm.model_executor.models.interfaces import SupportsPP
@@ -178,6 +201,9 @@ class MiniCPMO26OmniT2WForConditionalGeneration(nn.Module, SupportsPP):
             device=input_ids.device,
             dtype=torch.float32,
         )
+
+    def embed_input_ids(self, input_ids, **kwargs):
+        return self.get_input_embeddings(input_ids, **kwargs)
 
     def forward(
         self,
@@ -962,8 +988,8 @@ class ConditionalChatTTS(PreTrainedModel):
                 )
             )
 
-        # Convert list-of-tuples to DynamicCache for new transformers compatibility
-        cache_for_prefill = DynamicCache.from_legacy_cache(tuple(past_key_values_for_prefill))
+        # Convert list-of-tuples to DynamicCache for transformers >=5.0 compatibility
+        cache_for_prefill = _legacy_to_dynamic_cache(past_key_values_for_prefill)
 
         # Model forward
         outputs_prefill: BaseModelOutputWithPast = self.model(
@@ -981,7 +1007,7 @@ class ConditionalChatTTS(PreTrainedModel):
         # Get model updated KV Cache, convert back to legacy format
         past_key_values_for_prefill_updated = outputs_prefill.past_key_values
         if isinstance(past_key_values_for_prefill_updated, DynamicCache):
-            past_key_values_for_prefill_updated = past_key_values_for_prefill_updated.to_legacy_cache()
+            past_key_values_for_prefill_updated = _dynamic_cache_to_legacy(past_key_values_for_prefill_updated)
 
         # Update generated KV Cache to input `past_key_values`
         for layer_idx in range(len(past_key_values)):
@@ -1046,7 +1072,7 @@ class ConditionalChatTTS(PreTrainedModel):
         )  # [1, 1, 1, past_key_values_length + input_len]
 
         # Convert list-of-tuples to DynamicCache for new transformers compatibility
-        cache = DynamicCache.from_legacy_cache(tuple(past_key_values))
+        cache = _legacy_to_dynamic_cache(past_key_values)
 
         # Model forward
         outputs: BaseModelOutputWithPast = self.model(
@@ -1060,7 +1086,7 @@ class ConditionalChatTTS(PreTrainedModel):
         )
         past_key_values = outputs.past_key_values
         if isinstance(past_key_values, DynamicCache):
-            past_key_values = list(past_key_values.to_legacy_cache())
+            past_key_values = _dynamic_cache_to_legacy(past_key_values)
         return past_key_values
 
     @torch.inference_mode()
@@ -1178,7 +1204,7 @@ class ConditionalChatTTS(PreTrainedModel):
             )
 
             # Convert list-of-tuples to DynamicCache for new transformers compatibility
-            cache = DynamicCache.from_legacy_cache(tuple(past_key_values))
+            cache = _legacy_to_dynamic_cache(past_key_values)
 
             # Model forward
             outputs: BaseModelOutputWithPast = self.model(
@@ -1199,7 +1225,7 @@ class ConditionalChatTTS(PreTrainedModel):
             hidden_states = outputs.last_hidden_state
             past_key_values = outputs.past_key_values
             if isinstance(past_key_values, DynamicCache):
-                past_key_values = list(past_key_values.to_legacy_cache())
+                past_key_values = _dynamic_cache_to_legacy(past_key_values)
 
             with P.cached():
                 logits = torch.empty(

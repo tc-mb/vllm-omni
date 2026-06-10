@@ -418,6 +418,9 @@ class MiniCPMO26OmniTTSForConditionalGeneration(nn.Module, SupportsPP):
             return self.tts.emb_text(input_ids)
         return torch.zeros(input_ids.shape[0], 1)
 
+    def embed_input_ids(self, input_ids, **kwargs):
+        return self.get_input_embeddings(input_ids, **kwargs)
+
     def forward(
         self,
         input_ids: torch.Tensor = None,

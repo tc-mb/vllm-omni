@@ -2680,7 +2680,11 @@ class MiniCPMWhisperEncoder(WhisperEncoder):
             if past_key_values is None:
                 past_key_values = EncoderDecoderCache(DynamicCache(), DynamicCache())
             elif isinstance(past_key_values, list):
-                past_key_values = EncoderDecoderCache(DynamicCache.from_legacy_cache(past_key_values), DynamicCache())
+                cache = DynamicCache()
+                for k, v in past_key_values:
+                    cache.key_cache.append(k)
+                    cache.value_cache.append(v)
+                past_key_values = EncoderDecoderCache(cache, DynamicCache())
             elif isinstance(past_key_values, DynamicCache):
                 past_key_values = EncoderDecoderCache(past_key_values, DynamicCache())
             else:
