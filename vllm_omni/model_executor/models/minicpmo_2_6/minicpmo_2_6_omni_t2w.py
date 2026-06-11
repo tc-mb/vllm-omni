@@ -53,16 +53,15 @@ def _legacy_to_dynamic_cache(
     past_key_values: list[tuple[torch.Tensor, torch.Tensor]],
 ) -> DynamicCache:
     cache = DynamicCache()
-    for k, v in past_key_values:
-        cache.key_cache.append(k)
-        cache.value_cache.append(v)
+    for layer_idx, (k, v) in enumerate(past_key_values):
+        cache.update(k, v, layer_idx=layer_idx)
     return cache
 
 
 def _dynamic_cache_to_legacy(
     cache: DynamicCache,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
-    return list(zip(cache.key_cache, cache.value_cache))
+    return [(layer.keys, layer.values) for layer in cache.layers]
 
 
 from vllm.config import VllmConfig
