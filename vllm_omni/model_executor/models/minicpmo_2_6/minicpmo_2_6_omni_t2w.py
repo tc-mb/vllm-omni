@@ -48,6 +48,7 @@ from transformers.modeling_outputs import BaseModelOutputWithPast, ModelOutput
 # current DynamicCache object so the vendored ChatTTS code stays compatible.
 # ---------------------------------------------------------------------------
 
+
 def _legacy_to_dynamic_cache(
     past_key_values: list[tuple[torch.Tensor, torch.Tensor]],
 ) -> DynamicCache:
@@ -1319,13 +1320,13 @@ class ConditionalChatTTS(PreTrainedModel):
 
         if finish.all():
             # the last may contains eos token
-            genrated_input_ids = input_ids[:, condition_length:-1, :]
+            generated_input_ids = input_ids[:, condition_length:-1, :]
         else:
             # there is no eos token
-            genrated_input_ids = input_ids[:, condition_length:, :]
+            generated_input_ids = input_ids[:, condition_length:, :]
 
         return ConditionalChatTTSGenerationOutput(
-            new_ids=genrated_input_ids,
+            new_ids=generated_input_ids,
             audio_input_ids=input_ids,  # for update purpose
             past_key_values=past_key_values,  # for update purpose
             finished=finish.all(),
@@ -1395,4 +1396,3 @@ class ChatTTSProcessor:
             "tts_input_ids_varlen": input_ids_varlen,  # return List[Tensor]
             "tts_input_features_varlen": audio_features_varlen,  # return List[Tensor]
         }
-

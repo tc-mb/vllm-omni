@@ -507,4 +507,3 @@ class MiniCPMO26OmniTTSForConditionalGeneration(nn.Module, SupportsPP):
             loaded_weights.update("tts." + k for k in tts_weights)
 
         return loaded_weights
-

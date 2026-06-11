@@ -38,6 +38,7 @@ _HIDDEN_DIM = 4
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_thinker_output(
     *,
     prompt_token_ids: list[int],
@@ -79,6 +80,7 @@ def _make_talker_output(
 # llm2tts tests
 # ---------------------------------------------------------------------------
 
+
 class TestLlm2ttsInputValidation:
     def test_empty_source_outputs_raises(self) -> None:
         with pytest.raises(ValueError, match="source_outputs cannot be empty"):
@@ -95,9 +97,7 @@ class TestLlm2ttsBasicShape:
         hidden = torch.zeros((3, _HIDDEN_DIM))
         out = llm2tts(
             [
-                _make_thinker_output(
-                    prompt_token_ids=[10, 11], output_token_ids=[20], hidden_states=hidden
-                ),
+                _make_thinker_output(prompt_token_ids=[10, 11], output_token_ids=[20], hidden_states=hidden),
                 _make_thinker_output(
                     prompt_token_ids=[12],
                     output_token_ids=[21, 22],
@@ -203,6 +203,7 @@ class TestLlm2ttsPromptAndMultiModal:
 # ---------------------------------------------------------------------------
 # tts2t2w tests
 # ---------------------------------------------------------------------------
+
 
 class TestTts2t2wInputValidation:
     def test_empty_source_outputs_raises(self) -> None:
