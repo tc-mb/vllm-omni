@@ -527,7 +527,7 @@ def build_interface(endpoints: dict[str, ModelEndpoint], default_model: str) -> 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--minicpmo45-api-base", default=os.environ.get("MINICPMO45_API_BASE", "http://localhost:8099/v1"))
+    p.add_argument("--minicpmo45-api-base", default=os.environ.get("MINICPMO45_API_BASE", ""))
     p.add_argument(
         "--minicpmo45-model",
         default=os.environ.get("MINICPMO45_MODEL", "openbmb/MiniCPM-o-4_5"),

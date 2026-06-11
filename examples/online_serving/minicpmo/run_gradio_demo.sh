@@ -10,7 +10,7 @@ set -e
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-: "${MINICPMO45_API_BASE:=http://localhost:8099/v1}"
+: "${MINICPMO45_API_BASE:=}"
 : "${MINICPMO45_MODEL:=openbmb/MiniCPM-o-4_5}"
 : "${MINICPMO26_API_BASE:=}"
 : "${MINICPMO26_MODEL:=}"
@@ -19,6 +19,12 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # HTTPS (browsers require a secure context for microphone access).
 : "${GRADIO_SSL_CERTFILE:=}"
 : "${GRADIO_SSL_KEYFILE:=}"
+
+# Auto-detect 4.5 server if it's running on :8099 and no explicit config given.
+if [ -z "$MINICPMO45_API_BASE" ] && curl -sf --max-time 2 http://localhost:8099/health >/dev/null 2>&1; then
+  MINICPMO45_API_BASE="http://localhost:8099/v1"
+  echo "Auto-detected MiniCPM-o-4.5 server at :8099"
+fi
 
 # Auto-detect 2.6 server if it's running on :8091 and no explicit config given.
 if [ -z "$MINICPMO26_API_BASE" ] && curl -sf --max-time 2 http://localhost:8091/health >/dev/null 2>&1; then
