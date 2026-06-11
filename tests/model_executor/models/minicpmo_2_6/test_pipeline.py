@@ -5,8 +5,8 @@
 Covers:
   - pipeline declared in the central registry
   - lazy loader returns the expected ``PipelineConfig``
-  - 3-stage topology (thinker LLM_AR + talker LLM_AR + t2w LLM_AR)
-  - stage 1 routes through ``llm2tts``, stage 2 routes through ``tts2t2w``
+  - 2-stage topology (thinker LLM_AR + talker LLM_AR with audio output)
+  - stage 1 routes through ``llm2tts`` custom input processor
   - ``hf_architectures`` covers both the shared ``MiniCPMO`` alias and the
     explicit 2.6 arch
   - ``hf_config_predicate`` selects MiniCPM-o 2.6 only and rejects 4.5
@@ -50,12 +50,11 @@ class TestPipelineTopology:
     def pipeline(self) -> PipelineConfig:
         return _PIPELINE_REGISTRY[_PIPELINE_KEY]
 
-    def test_three_stages(self, pipeline: PipelineConfig) -> None:
-        assert len(pipeline.stages) == 3
-        assert [s.stage_id for s in pipeline.stages] == [0, 1, 2]
+    def test_two_stages(self, pipeline: PipelineConfig) -> None:
+        assert len(pipeline.stages) == 2
+        assert [s.stage_id for s in pipeline.stages] == [0, 1]
 
     def test_topology_validates(self, pipeline: PipelineConfig) -> None:
-        # ``validate`` returns a list of structural errors; empty == valid.
         assert pipeline.validate() == []
 
     def test_thinker_stage(self, pipeline: PipelineConfig) -> None:
@@ -76,36 +75,17 @@ class TestPipelineTopology:
         assert talker.execution_type == StageExecutionType.LLM_AR
         # talker consumes thinker output
         assert talker.input_sources == (0,)
-        # talker is NOT final in 3-stage pipeline (t2w is)
-        assert talker.final_output is False
-        assert talker.engine_output_type == "latent"
+        assert talker.final_output is True
+        assert talker.final_output_type == "audio"
+        assert talker.engine_output_type == "audio"
+        # scope KV cache / mrope sizing to talker sub-config
         assert talker.hf_config_name == "tts_config"
-
-    def test_t2w_stage(self, pipeline: PipelineConfig) -> None:
-        t2w = pipeline.get_stage(2)
-        assert t2w is not None
-        assert t2w.model_stage == "t2w"
-        assert t2w.execution_type == StageExecutionType.LLM_AR
-        # t2w consumes talker output
-        assert t2w.input_sources == (1,)
-        # t2w IS the final output stage
-        assert t2w.final_output is True
-        assert t2w.final_output_type == "audio"
-        assert t2w.engine_output_type == "audio"
-        assert t2w.hf_config_name == "tts_config"
 
     def test_talker_routes_through_llm2tts(self, pipeline: PipelineConfig) -> None:
         talker = pipeline.get_stage(1)
         assert talker is not None
         assert talker.custom_process_input_func == (
             "vllm_omni.model_executor.stage_input_processors.minicpmo_2_6_omni.llm2tts"
-        )
-
-    def test_t2w_routes_through_tts2t2w(self, pipeline: PipelineConfig) -> None:
-        t2w = pipeline.get_stage(2)
-        assert t2w is not None
-        assert t2w.custom_process_input_func == (
-            "vllm_omni.model_executor.stage_input_processors.minicpmo_2_6_omni.tts2t2w"
         )
 
 
@@ -117,11 +97,9 @@ class TestArchAliases:
         return _PIPELINE_REGISTRY[_PIPELINE_KEY]
 
     def test_shared_minicpmo_alias_present(self, pipeline: PipelineConfig) -> None:
-        # MiniCPM-o 2.6 ships ``architectures=["MiniCPMO"]`` in its HF config.
         assert "MiniCPMO" in pipeline.hf_architectures
 
     def test_explicit_2_6_arch_present(self, pipeline: PipelineConfig) -> None:
-        # Reserve the explicit arch name for future repos that opt into it.
         assert "MiniCPMO26OmniForConditionalGeneration" in pipeline.hf_architectures
 
 
@@ -149,7 +127,6 @@ class TestHfConfigPredicate:
         assert predicate(SimpleNamespace(version="4.5")) is False
 
     def test_rejects_missing_version(self, predicate) -> None:
-        # 1.0 / older checkpoints do not carry ``version`` at all.
         assert predicate(SimpleNamespace()) is False
 
     def test_rejects_empty_version(self, predicate) -> None:

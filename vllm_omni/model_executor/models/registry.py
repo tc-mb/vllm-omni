@@ -317,11 +317,6 @@ _OMNI_MODELS = {
         "minicpmo_2_6_omni_tts",
         "MiniCPMO26OmniTTSForConditionalGeneration",
     ),
-    "MiniCPMO26OmniT2WForConditionalGeneration": (
-        "minicpmo_2_6",
-        "minicpmo_2_6_omni_t2w",
-        "MiniCPMO26OmniT2WForConditionalGeneration",
-    ),
     # MiniCPM-o 4.5 Omni models
     "MiniCPMO45OmniForConditionalGeneration": (
         "minicpmo_4_5",

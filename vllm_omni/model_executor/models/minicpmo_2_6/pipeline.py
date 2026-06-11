@@ -3,13 +3,12 @@
 """MiniCPM-o 2.6 pipeline topology (frozen).
 
 Stage 0: Thinker --- multimodal understanding + text generation.
-Stage 1: Talker  --- ConditionalChatTTS + DVAE, emits mel spectrogram.
-Stage 2: T2W    --- Vocos vocoder, mel spectrogram -> audio waveform.
+Stage 1: Talker  --- ConditionalChatTTS + Vocos, emits the final audio waveform.
 
 The thinker -> talker bridge passes the hidden states + token ids extracted
-from the thinker output through ``minicpmo_2_6_omni.llm2tts``; the
-talker -> t2w bridge passes the mel spectrogram through
-``minicpmo_2_6_omni.tts2t2w``.
+from the thinker output through ``minicpmo_2_6_omni.llm2tts``; the talker
+runs ConditionalChatTTS + DVAE + Vocos vocoder in the same process and
+returns the waveform directly as the pipeline's final audio output.
 """
 
 from vllm_omni.config.stage_config import (
@@ -44,22 +43,11 @@ MINICPMO_2_6_PIPELINE = PipelineConfig(
             model_stage="tts",
             execution_type=StageExecutionType.LLM_AR,
             input_sources=(0,),
-            final_output=False,
-            hf_config_name="tts_config",
-            engine_output_type="latent",
-            custom_process_input_func=f"{_PROC}.llm2tts",
-            sampling_constraints={"detokenize": False},
-        ),
-        StagePipelineConfig(
-            stage_id=2,
-            model_stage="t2w",
-            execution_type=StageExecutionType.LLM_AR,
-            input_sources=(1,),
             final_output=True,
             final_output_type="audio",
             hf_config_name="tts_config",
             engine_output_type="audio",
-            custom_process_input_func=f"{_PROC}.tts2t2w",
+            custom_process_input_func=f"{_PROC}.llm2tts",
             sampling_constraints={"detokenize": False},
         ),
     ),

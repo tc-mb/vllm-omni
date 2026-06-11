@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-"""Stage input processors for MiniCPM-o 2.6: Thinker -> Talker -> Token2Wav.
+"""Stage input processor for MiniCPM-o 2.6: Thinker (LLM) -> Talker (TTS).
 
 llm2tts: converts the thinker stage's hidden states + token ids into the
          talker stage's prompt payload.
-tts2t2w: converts the talker stage's mel spectrogram into the token2wav
-         stage's prompt payload.
 """
 
 from typing import Any
@@ -33,7 +31,7 @@ def llm2tts(
       1. Find <|spk_bos|>/<|spk_eos|> positions in prompt_token_ids
       2. Extract speaker embedding from hidden states at those positions
       3. Decode generated text and extract TTS content
-      4. Run ConditionalChatTTS pipeline
+      4. Run ConditionalChatTTS pipeline + Vocos vocoder -> audio waveform
     """
     del streaming_context  # not used by MiniCPM-o 2.6 pipeline
 
@@ -95,61 +93,3 @@ def llm2tts(
         )
 
     return tts_inputs
-
-
-def tts2t2w(
-    source_outputs: list[Any],
-    prompt: OmniTokensPrompt | TextPrompt | dict | list | None = None,
-    requires_multimodal_data: bool = False,
-    streaming_context: Any | None = None,
-):
-    """Convert talker stage output to code2wav stage input for MiniCPM-o 2.6.
-
-    Extracts mel_spec from talker's multimodal output and passes it to
-    the code2wav stage for Vocos vocoder (mel -> waveform) conversion.
-    """
-    del streaming_context  # not used by MiniCPM-o 2.6 pipeline
-
-    if not source_outputs:
-        raise ValueError("source_outputs cannot be empty")
-
-    tts_outputs = source_outputs
-    t2w_inputs = []
-
-    if not isinstance(prompt, list):
-        prompt = [prompt]
-
-    multi_modal_data = {
-        tts_output.request_id: p.get("multi_modal_data", None) if isinstance(p, dict) else None
-        for tts_output, p in zip(tts_outputs, prompt)
-    }
-
-    for i, tts_output in enumerate(tts_outputs):
-        output = tts_output.outputs[0]
-
-        mel_spec = None
-        if hasattr(output, "multimodal_output") and isinstance(output.multimodal_output, dict):
-            mel_spec = output.multimodal_output.get("mel_spec")
-            # mel_spec from multimodal_output is wrapped in a list
-            if isinstance(mel_spec, list) and len(mel_spec) > 0:
-                mel_spec = mel_spec[0]
-
-        additional_information = {}
-        if mel_spec is not None:
-            additional_information["mel_spec"] = mel_spec
-
-        # Minimal dummy prompt token IDs for the AR framework
-        t2w_inputs.append(
-            OmniTokensPrompt(
-                prompt_token_ids=[1, 0, 2],
-                additional_information=additional_information,
-                multi_modal_data=(
-                    multi_modal_data[tts_output.request_id]
-                    if requires_multimodal_data and multi_modal_data.get(tts_output.request_id) is not None
-                    else None
-                ),
-                mm_processor_kwargs=None,
-            )
-        )
-
-    return t2w_inputs
