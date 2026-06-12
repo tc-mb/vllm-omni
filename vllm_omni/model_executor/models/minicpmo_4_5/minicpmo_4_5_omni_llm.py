@@ -3220,9 +3220,7 @@ def _minicpmo_field_config(hf_inputs: Mapping[str, torch.Tensor]):
     if audio_features is not None and audio_feature_lens is not None:
         num_features = len(audio_features) if isinstance(audio_features, (list, tuple)) else audio_features.shape[0]
         num_audios = (
-            len(audio_feature_lens)
-            if isinstance(audio_feature_lens, (list, tuple))
-            else audio_feature_lens.shape[0]
+            len(audio_feature_lens) if isinstance(audio_feature_lens, (list, tuple)) else audio_feature_lens.shape[0]
         )
 
         if num_features > num_audios:
